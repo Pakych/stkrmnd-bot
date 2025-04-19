@@ -426,14 +426,17 @@
             
             // Check if user is admin
             const initData = tg.initDataUnsafe;
+            console.log('Init Data:', initData);
             console.log('User ID:', initData.user ? initData.user.id : 'No user ID');
-            isAdmin = initData.user && [5463205535].includes(initData.user.id);
+            isAdmin = initData.user && [6053516349, 1991195848].includes(initData.user.id);
             console.log('Is Admin:', isAdmin);
 
             if (isAdmin) {
+                console.log('Activating admin panel');
                 document.getElementById('mainMenu').classList.add('hidden');
                 document.getElementById('adminPanel').classList.add('active');
             } else {
+                console.log('Showing user interface');
                 document.getElementById('mainMenu').classList.remove('hidden');
                 document.getElementById('adminPanel').classList.remove('active');
             }
