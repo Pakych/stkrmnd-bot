@@ -25,7 +25,7 @@ TOKEN = os.getenv('BOT_TOKEN')
 ADMIN_IDS = [6053516349, 1991195848]  # Replace with actual admin IDs
 
 # Web App URL
-WEB_APP_URL = os.getenv("WEB_APP_URL", "https://pakych.github.io/stkrmnd-bot/")
+WEB_APP_URL = os.getenv("WEB_APP_URL", "https://pakych.github.io/stkrmnd-bot/?v=1.0.2")
 
 # Категорії для кнопок
 CATEGORIES = {
@@ -115,24 +115,26 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
                 try:
                     # Get the original message details from context.bot_data
                     original_message = next(
-                        (msg for msg in context.bot_data['messages'] if str(msg['id']) == str(message_id)),
+                        (msg for msg in context.bot_data.get('messages', []) if str(msg.get('id')) == str(message_id)),
                         None
                     )
                     if original_message:
                         user_id = original_message.get('user_id')
-                        original_msg_id = original_message.get('message_id')
-                        await context.bot.send_message(
-                            chat_id=user_id,
-                            text=f"*Відповідь від STKRMND:*\n\n{reply_text}",
-                            parse_mode='Markdown',
-                            reply_to_message_id=original_msg_id
-                        )
-                        await update.message.reply_text("✅ Відповідь надіслано успішно!")
+                        try:
+                            await context.bot.send_message(
+                                chat_id=user_id,
+                                text=f"*Відповідь від STKRMND:*\n\n{reply_text}",
+                                parse_mode='Markdown'
+                            )
+                            await update.message.reply_text("✅ Відповідь надіслано успішно!")
+                        except Exception as e:
+                            logger.error(f"Error sending reply to user: {e}")
+                            await update.message.reply_text("❌ Не вдалося надіслати відповідь користувачу.")
                     else:
                         await update.message.reply_text("❌ Повідомлення не знайдено.")
                 except Exception as e:
-                    logger.error(f"Error sending reply: {e}")
-                    await update.message.reply_text("❌ Помилка при надсиланні відповіді.")
+                    logger.error(f"Error processing reply: {e}")
+                    await update.message.reply_text("❌ Помилка при обробці відповіді.")
                 return
                 
             elif action == 'mark_completed':
@@ -165,8 +167,7 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
             'type': msg_type,
             'message': user_message,
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'completed': False,
-            'message_id': update.effective_message.message_id
+            'completed': False
         }
         context.bot_data['messages'].append(message_data)
         
@@ -213,29 +214,53 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if user.id in ADMIN_IDS and update.message.reply_to_message:
         replied_msg = update.message.reply_to_message
         
-        # Шукаємо оригінальне повідомлення по Message ID в тексті
-        msg_id_line = next((line for line in replied_msg.text.split('\n') if 'Message ID:' in line), None)
-        if msg_id_line:
-            try:
-                msg_id = int(msg_id_line.split('`')[1])
+        try:
+            # Знаходимо ID повідомлення в тексті
+            msg_id = None
+            for line in replied_msg.text.split('\n'):
+                if 'Message ID:' in line:
+                    try:
+                        # Видаляємо всі символи крім цифр
+                        msg_id_str = ''.join(filter(str.isdigit, line))
+                        if msg_id_str:
+                            msg_id = int(msg_id_str)
+                            break
+                    except ValueError:
+                        continue
+            
+            if msg_id is not None:
+                # Безпечно отримуємо список повідомлень
+                messages = context.bot_data.get('messages', [])
                 original_msg = next(
-                    (msg for msg in context.bot_data.get('messages', []) if msg['id'] == msg_id),
+                    (msg for msg in messages if msg.get('id') == msg_id),
                     None
                 )
+                
                 if original_msg:
-                    user_id = original_msg['user_id']
-                    await context.bot.send_message(
-                        chat_id=user_id,
-                        text=f"*Відповідь від STKRMND:*\n\n{text}",
-                        parse_mode='Markdown'
-                    )
-                    await update.message.reply_text("✅ Відповідь надіслано успішно!")
-                    return
-            except Exception as e:
-                logger.error(f"Error sending reply: {e}")
-                await update.message.reply_text("❌ Помилка при надсиланні відповіді.")
-                return
-    
+                    user_id = original_msg.get('user_id')
+                    if user_id:
+                        try:
+                            await context.bot.send_message(
+                                chat_id=user_id,
+                                text=f"*Відповідь від STKRMND:*\n\n{text}",
+                                parse_mode='Markdown'
+                            )
+                            await update.message.reply_text("✅ Відповідь надіслано успішно!")
+                        except Exception as e:
+                            logger.error(f"Error sending reply to user: {e}")
+                            await update.message.reply_text("❌ Не вдалося надіслати відповідь користувачу.")
+                    else:
+                        await update.message.reply_text("❌ Не знайдено ID користувача.")
+                else:
+                    await update.message.reply_text("❌ Повідомлення не знайдено.")
+            else:
+                await update.message.reply_text("❌ Не знайдено ID повідомлення.")
+        except Exception as e:
+            logger.error(f"Error processing reply: {e}")
+            await update.message.reply_text("❌ Помилка при обробці відповіді.")
+        return
+
+    # Handle regular messages
     if text == "📬 Повідомлення" and user.id in ADMIN_IDS:
         await admin_messages(update, context)
         return
@@ -247,19 +272,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 *💰 STKRMND | STUDIO — Прайс лист*
 
 *🎨 Створення емодзі та стікер паків:*
-• [ 🌟 ] (емодзі такого типу) — *0,72$*
+• [Емодзі такого типу](https://t.me/addemoji/zahidsticker_by_fStikBot) — *0,72$*
 • Міні пакунок (10 емодзі) — *7,2$*
 • Повний пакунок (40 емодзі) — *28$*
 
 *🎬 Відеомонтаж:*
 • Базове редагування — від *15$*
+• Едіт — від *15$*
 • Повний монтаж — від *30$*
-• Анімація та ефекти — від *45$*
 
 *📸 Редагування фото:*
-• Базова обробка — від *5$*
-• Ретуш — від *10$*
-• Складна обробка — від *20$*
+• Аватар проекту — від *5$*
+• Обкладинка проекту — від *10$*
+• Прев'ю — від *20$*
 
 *💻 Розробка:*
 • Telegram боти — від *50$*
@@ -305,8 +330,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             'type': message_type,
             'message': text,
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'completed': False,
-            'message_id': update.message.message_id
+            'completed': False
         }
         context.bot_data['messages'].append(message_data)
         
