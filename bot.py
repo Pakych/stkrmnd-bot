@@ -6,6 +6,7 @@ from telegram.error import BadRequest
 import os
 import json
 from dotenv import load_dotenv
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -20,26 +21,77 @@ logger = logging.getLogger(__name__)
 # Bot token
 TOKEN = os.getenv('BOT_TOKEN')
 
-# Admin IDs (convert string to int)
-ADMIN_IDS = [int(id_str) for id_str in os.getenv('ADMIN_ID', '').split(',') if id_str]
+# Admin IDs
+ADMIN_IDS = [6053516349, 1991195848]  # Replace with actual admin IDs
 
 # Web App URL
-WEB_APP_URL = "https://your-domain.com"  # Замініть на ваш URL
+WEB_APP_URL = os.getenv("WEB_APP_URL", "https://pakych.github.io/stkrmnd-bot/")
+
+# Категорії для кнопок
+CATEGORIES = {
+    "programming": "Програмування 💻",
+    "design": "Дизайн 🎨",
+    "video": "Відеомонтаж 🎬",
+    "editing": "Редагування фото 📸",
+    "other": "Інше 📝"
+}
 
 def get_main_keyboard():
     """Get main keyboard with web app button."""
     keyboard = [
         [KeyboardButton("🌐 Веб версія", web_app=WebAppInfo(url=WEB_APP_URL))],
         [KeyboardButton("🎨 Дизайн"), KeyboardButton("💻 Програмування")],
+        [KeyboardButton("🎬 Відеомонтаж"), KeyboardButton("📸 Редагування фото")],
         [KeyboardButton("💰 Прайс")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
+    user = update.effective_user
+    
+    # Initialize messages list in bot_data if not exists
+    if 'messages' not in context.bot_data:
+        context.bot_data['messages'] = []
+    
+    # Check if user is admin
+    if user.id in ADMIN_IDS:
+        keyboard = [
+            [KeyboardButton("🌐 Веб версія", web_app=WebAppInfo(url=WEB_APP_URL))],
+            [KeyboardButton("📬 Повідомлення"), KeyboardButton("📊 Статистика")],
+            [KeyboardButton("💰 Прайс")]
+        ]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text(
+            f"👋 Вітаю, {user.full_name}!\n\n"
+            "🔑 *Ви увійшли як адміністратор*\n\n"
+            "Доступні команди:\n"
+            "/messages - переглянути всі повідомлення\n"
+            "/stats - переглянути статистику\n\n"
+            "Використовуйте кнопки нижче для навігації:",
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return
+
+    keyboard = [
+        [KeyboardButton("🌐 Веб версія", web_app=WebAppInfo(url=WEB_APP_URL))],
+        [KeyboardButton("🎨 Дизайн"), KeyboardButton("💻 Програмування")],
+        [KeyboardButton("🎬 Відеомонтаж"), KeyboardButton("📸 Редагування фото")],
+        [KeyboardButton("💰 Прайс")]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    
     await update.message.reply_text(
-        "Вітаю! Я бот студії STKRMND.\nОберіть опцію:",
-        reply_markup=get_main_keyboard()
+        f"👋 Вітаю, {user.full_name}!\n\n"
+        "🎨 *STKRMND Studio* - ваш надійний партнер у створенні:\n"
+        "• Веб-сайтів та додатків\n"
+        "• Дизайну будь-якої складності\n"
+        "• Відеомонтажу та анімації\n"
+        "• Обробки фотографій\n\n"
+        "Використовуйте кнопки нижче для навігації:",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
     )
 
 async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -47,8 +99,76 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         data = json.loads(update.effective_message.web_app_data.data)
         msg_type = data.get('type')
-        user_message = data.get('message')
         user = update.effective_user
+        
+        # Handle admin actions
+        if msg_type == 'admin_action':
+            if user.id not in ADMIN_IDS:
+                await update.message.reply_text("❌ У вас немає прав для виконання цієї дії.")
+                return
+                
+            action = data.get('action')
+            message_id = data.get('messageId')
+            
+            if action == 'reply':
+                reply_text = data.get('reply')
+                try:
+                    # Get the original message details from context.bot_data
+                    original_message = next(
+                        (msg for msg in context.bot_data['messages'] if str(msg['id']) == str(message_id)),
+                        None
+                    )
+                    if original_message:
+                        user_id = original_message.get('user_id')
+                        original_msg_id = original_message.get('message_id')
+                        await context.bot.send_message(
+                            chat_id=user_id,
+                            text=f"*Відповідь від STKRMND:*\n\n{reply_text}",
+                            parse_mode='Markdown',
+                            reply_to_message_id=original_msg_id
+                        )
+                        await update.message.reply_text("✅ Відповідь надіслано успішно!")
+                    else:
+                        await update.message.reply_text("❌ Повідомлення не знайдено.")
+                except Exception as e:
+                    logger.error(f"Error sending reply: {e}")
+                    await update.message.reply_text("❌ Помилка при надсиланні відповіді.")
+                return
+                
+            elif action == 'mark_completed':
+                try:
+                    # Mark message as completed in context.bot_data
+                    message = next(
+                        (msg for msg in context.bot_data['messages'] if str(msg['id']) == str(message_id)),
+                        None
+                    )
+                    if message:
+                        message['completed'] = True
+                        await update.message.reply_text("✅ Позначено як виконане!")
+                    else:
+                        await update.message.reply_text("❌ Повідомлення не знайдено.")
+                except Exception as e:
+                    logger.error(f"Error marking as completed: {e}")
+                    await update.message.reply_text("❌ Помилка при позначенні як виконане.")
+                return
+        
+        # Handle regular messages
+        user_message = data.get('message')
+        
+        # Store message in context.bot_data
+        message_id = len(context.bot_data['messages']) + 1
+        message_data = {
+            'id': message_id,
+            'user_id': user.id,
+            'username': user.username,
+            'full_name': user.full_name,
+            'type': msg_type,
+            'message': user_message,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'completed': False,
+            'message_id': update.effective_message.message_id
+        }
+        context.bot_data['messages'].append(message_data)
         
         # Format message for admin
         admin_message = f"""
@@ -58,6 +178,8 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
 🔍 *Username:* @{user.username if user.username else 'немає'}
 📋 *Тип:* {msg_type}
 💭 *Повідомлення:* {user_message}
+
+🆔 Message ID: `{message_id}`
 """
         
         # Send to all admins
@@ -85,8 +207,42 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle regular messages."""
     text = update.message.text
+    user = update.effective_user
     
-    if text == "💰 Прайс":
+    # Якщо це відповідь від адміна на повідомлення
+    if user.id in ADMIN_IDS and update.message.reply_to_message:
+        replied_msg = update.message.reply_to_message
+        
+        # Шукаємо оригінальне повідомлення по Message ID в тексті
+        msg_id_line = next((line for line in replied_msg.text.split('\n') if 'Message ID:' in line), None)
+        if msg_id_line:
+            try:
+                msg_id = int(msg_id_line.split('`')[1])
+                original_msg = next(
+                    (msg for msg in context.bot_data.get('messages', []) if msg['id'] == msg_id),
+                    None
+                )
+                if original_msg:
+                    user_id = original_msg['user_id']
+                    await context.bot.send_message(
+                        chat_id=user_id,
+                        text=f"*Відповідь від STKRMND:*\n\n{text}",
+                        parse_mode='Markdown'
+                    )
+                    await update.message.reply_text("✅ Відповідь надіслано успішно!")
+                    return
+            except Exception as e:
+                logger.error(f"Error sending reply: {e}")
+                await update.message.reply_text("❌ Помилка при надсиланні відповіді.")
+                return
+    
+    if text == "📬 Повідомлення" and user.id in ADMIN_IDS:
+        await admin_messages(update, context)
+        return
+    elif text == "📊 Статистика" and user.id in ADMIN_IDS:
+        await admin_stats(update, context)
+        return
+    elif text == "💰 Прайс":
         price_text = """
 *💰 STKRMND | STUDIO — Прайс лист*
 
@@ -95,30 +251,202 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 • Міні пакунок (10 емодзі) — *7,2$*
 • Повний пакунок (40 емодзі) — *28$*
 
-*💡 Про послугу:*
-Емодзі, які додають унікальності вашому контенту.
-Ідеально підходять для каналів, чатів та особистих проектів.
+*🎬 Відеомонтаж:*
+• Базове редагування — від *15$*
+• Повний монтаж — від *30$*
+• Анімація та ефекти — від *45$*
 
-*💻 Ціна розробки програмування та дизайну залежить від ваших вимог!*
+*📸 Редагування фото:*
+• Базова обробка — від *5$*
+• Ретуш — від *10$*
+• Складна обробка — від *20$*
+
+*💻 Розробка:*
+• Telegram боти — від *50$*
+• Веб-сайти — від *200$*
+• Десктопні програми — від *300$*
+
+*💡 Про послуги:*
+• Індивідуальний підхід до кожного проекту
+• Безкоштовні правки
+• Підтримка після виконання
+
+*📞 Для детального обговорення використовуйте веб-форму або оберіть категорію в меню.*
 """
         await update.message.reply_text(price_text, parse_mode='Markdown')
-    elif text in ["🎨 Дизайн", "💻 Програмування"]:
+    elif text in ["🎨 Дизайн", "💻 Програмування", "🎬 Відеомонтаж", "📸 Редагування фото"]:
         await update.message.reply_text(
-            f"Для замовлення {text}, будь ласка, натисніть кнопку '🌐 Веб версія' та заповніть форму."
+            f"Опишіть ваш проект для категорії {text}.\nЯ передам ваше повідомлення адміністраторам.",
+            reply_markup=get_main_keyboard()
         )
+    else:
+        # Store regular message in context.bot_data
+        if 'messages' not in context.bot_data:
+            context.bot_data['messages'] = []
+            
+        message_id = len(context.bot_data['messages']) + 1
+        message_type = 'other'  # Default type for regular messages
+        
+        # Try to determine message type based on content
+        if "програм" in text.lower():
+            message_type = 'programming'
+        elif "дизайн" in text.lower():
+            message_type = 'design'
+        elif "відео" in text.lower() or "монтаж" in text.lower():
+            message_type = 'video'
+        elif "фото" in text.lower() or "редагування" in text.lower():
+            message_type = 'editing'
+        
+        message_data = {
+            'id': message_id,
+            'user_id': user.id,
+            'username': user.username,
+            'full_name': user.full_name if user.full_name else "Користувач",
+            'type': message_type,
+            'message': text,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'completed': False,
+            'message_id': update.message.message_id
+        }
+        context.bot_data['messages'].append(message_data)
+        
+        # Format message for admin
+        admin_message = f"""
+📩 *НОВЕ ПОВІДОМЛЕННЯ*
+
+👤 *Від:* {message_data['full_name']}
+🔍 *Username:* @{message_data['username'] if message_data['username'] else 'немає'}
+📋 *Тип:* {message_type}
+💭 *Повідомлення:* {text}
+
+🆔 Message ID: `{message_id}`
+"""
+        
+        # Send to all admins
+        for admin_id in ADMIN_IDS:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=admin_message,
+                    parse_mode='Markdown'
+                )
+            except Exception as e:
+                logger.error(f"Failed to send message to admin {admin_id}: {e}")
+        
+        # Send confirmation to user
+        await update.message.reply_text(
+            "✅ *Дякуємо за ваше повідомлення!*\nМи зв'яжемося з вами найближчим часом.",
+            parse_mode='Markdown',
+            reply_markup=get_main_keyboard()
+        )
+
+async def admin_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show messages to admin."""
+    user_id = update.effective_user.id
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("❌ У вас немає прав для виконання цієї команди.")
+        return
+
+    if 'messages' not in context.bot_data:
+        context.bot_data['messages'] = []
+    
+    messages = context.bot_data['messages']
+    
+    if not messages:
+        await update.message.reply_text("📭 Наразі немає повідомлень.")
+        return
+        
+    # Format messages
+    message_text = "📬 *Останні повідомлення:*\n\n"
+    for msg in messages[-10:]:  # Show last 10 messages
+        status = "✅ Виконано" if msg.get('completed', False) else "⏳ В обробці"
+        message_text += f"👤 *Від:* {msg['full_name']}\n"
+        message_text += f"📱 *Telegram:* @{msg['username'] if msg['username'] else 'немає'}\n"
+        message_text += f"📋 *Категорія:* {msg['type']}\n"
+        message_text += f"💬 *Повідомлення:* {msg['message']}\n"
+        message_text += f"⏰ *Час:* {msg['timestamp']}\n"
+        message_text += f"📊 *Статус:* {status}\n"
+        message_text += f"🆔 Message ID: `{msg['id']}`\n\n"
+        message_text += "➖➖➖➖➖➖➖➖➖➖\n\n"
+    
+    await update.message.reply_text(message_text, parse_mode='Markdown')
+
+async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show statistics to admin."""
+    user_id = update.effective_user.id
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("❌ У вас немає прав для виконання цієї команди.")
+        return
+
+    if 'messages' not in context.bot_data:
+        context.bot_data['messages'] = []
+    
+    messages = context.bot_data['messages']
+    
+    # Calculate statistics
+    total_messages = len(messages)
+    completed_messages = sum(1 for msg in messages if msg.get('completed', False))
+    pending_messages = total_messages - completed_messages
+    
+    # Count messages by type
+    type_counts = {}
+    for msg in messages:
+        msg_type = msg.get('type', 'other')
+        type_counts[msg_type] = type_counts.get(msg_type, 0) + 1
+    
+    # Format statistics message
+    stats_text = "📊 *Статистика повідомлень:*\n\n"
+    stats_text += f"📨 *Всього повідомлень:* {total_messages}\n\n"
+    
+    if type_counts:
+        stats_text += "*По категоріях:*\n"
+        for msg_type, count in type_counts.items():
+            category_name = CATEGORIES.get(msg_type, msg_type.capitalize())
+            stats_text += f"• {category_name}: {count}\n"
+        stats_text += "\n"
+    
+    stats_text += "*Статус повідомлень:*\n"
+    stats_text += f"✅ Виконано: {completed_messages}\n"
+    stats_text += f"⏳ В обробці: {pending_messages}\n"
+    
+    await update.message.reply_text(stats_text, parse_mode='Markdown')
+
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle button callbacks."""
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == 'messages':
+        if query.from_user.id not in ADMIN_IDS:
+            await query.message.reply_text("❌ У вас немає прав для виконання цієї команди.")
+            return
+        await admin_messages(update, context)
+    elif query.data == 'stats':
+        if query.from_user.id not in ADMIN_IDS:
+            await query.message.reply_text("❌ У вас немає прав для виконання цієї команди.")
+            return
+        await admin_stats(update, context)
 
 def main() -> None:
     """Start the bot."""
-    # Create the Application
     application = Application.builder().token(TOKEN).build()
 
-    # Add handlers
+    # Add command handlers
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("messages", admin_messages))
+    application.add_handler(CommandHandler("stats", admin_stats))
+    
+    # Callback query handler
+    application.add_handler(CallbackQueryHandler(button_callback))
+    
+    # Web app data handler
     application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
+    
+    # Regular message handler
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Start the Bot
+    # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main() 
