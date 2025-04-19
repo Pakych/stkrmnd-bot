@@ -2,39 +2,84 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>STKRMND | STUDIO</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        :root {
+            color-scheme: light dark;
+            --primary-gradient: linear-gradient(135deg, #8774e1 0%, #c366d8 100%);
+            --card-gradient: linear-gradient(145deg, rgba(135, 116, 225, 0.1) 0%, rgba(195, 102, 216, 0.1) 100%);
+            --tg-theme-bg-color: #1E1E1E;
+            --tg-theme-text-color: #ffffff;
+            --tg-theme-hint-color: #7d7d7d;
+            --tg-theme-link-color: #8774e1;
+            --tg-theme-button-color: #2B2B2B;
+            --tg-theme-button-text-color: #ffffff;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             margin: 0;
             padding: 16px;
             background: var(--tg-theme-bg-color, #1E1E1E);
-            color: var(--tg-theme-text-color, white);
+            color: var(--tg-theme-text-color, #ffffff);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overscroll-behavior: none;
         }
 
         .container {
-            max-width: 500px;
+            max-width: 600px;
             margin: 0 auto;
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         .menu-button {
-            display: block;
+            display: flex;
+            align-items: center;
             width: 100%;
-            padding: 12px;
+            padding: 16px;
             margin: 8px 0;
             background: var(--tg-theme-button-color, #2B2B2B);
             border: none;
-            border-radius: 8px;
-            color: var(--tg-theme-button-text-color, white);
+            border-radius: 12px;
+            color: var(--tg-theme-button-text-color, #ffffff);
             font-size: 16px;
             text-align: left;
             cursor: pointer;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
-        .menu-button:hover {
-            background: var(--tg-theme-secondary-bg-color, #363636);
+        .menu-button:active {
+            transform: scale(0.98);
+        }
+
+        .menu-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--primary-gradient);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .menu-button:active::before {
+            opacity: 0.1;
+        }
+
+        .menu-button .icon {
+            margin-right: 12px;
+            font-size: 20px;
         }
 
         .back-button {
@@ -45,109 +90,503 @@
         .message-area {
             width: 100%;
             height: 150px;
-            padding: 12px;
+            padding: 16px;
             margin: 8px 0;
             background: var(--tg-theme-secondary-bg-color, #2B2B2B);
-            border: none;
-            border-radius: 8px;
-            color: var(--tg-theme-text-color, white);
+            border: 1px solid var(--tg-theme-hint-color, #6d6d6d);
+            border-radius: 12px;
+            color: var(--tg-theme-text-color, #ffffff);
             font-size: 16px;
             resize: none;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-area:focus {
+            outline: none;
+            border-color: var(--tg-theme-link-color, #8774e1);
+            box-shadow: 0 4px 12px rgba(135, 116, 225, 0.2);
         }
 
         .price-item {
-            padding: 12px;
-            margin: 8px 0;
-            background: var(--tg-theme-secondary-bg-color, #2B2B2B);
-            border-radius: 8px;
+            padding: 20px;
+            margin: 12px 0;
+            background: var(--card-gradient);
+            border-radius: 12px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .price-item .price {
+            font-weight: 600;
+            color: var(--tg-theme-link-color, #8774e1);
         }
 
         .hidden {
+            display: none !important;
+        }
+
+        .error-message {
+            color: #ff3b30;
+            font-size: 14px;
+            margin: 8px 0;
             display: none;
+        }
+
+        /* Admin Panel Styles */
+        .admin-panel {
+            display: none;
+        }
+
+        .admin-panel.active {
+            display: block;
+        }
+
+        .message-card {
+            background: var(--card-gradient);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        .message-card .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #6d6d6d);
+        }
+
+        .message-card .content {
+            margin: 12px 0;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .message-card .actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .action-button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-gradient);
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .action-button:active {
+            opacity: 0.8;
+        }
+
+        .reply-form {
+            display: none;
+            margin-top: 12px;
+        }
+
+        .reply-form.active {
+            display: block;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: var(--primary-gradient);
+            font-size: 12px;
+            margin-right: 8px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 16px 0;
+            color: var(--tg-theme-text-color);
+        }
+
+        .no-messages {
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--tg-theme-hint-color);
+            font-size: 16px;
+        }
+
+        @media (max-width: 360px) {
+            body {
+                padding: 12px;
+            }
+            
+            .menu-button {
+                padding: 14px;
+                font-size: 15px;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease forwards;
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- User Interface -->
         <div id="mainMenu">
-            <button class="menu-button" onclick="showSection('design')">🎨 Дизайн</button>
-            <button class="menu-button" onclick="showSection('programming')">💻 Програмування</button>
-            <button class="menu-button" onclick="showSection('price')">💰 Прайс</button>
+            <h1 class="section-title">STKRMND | STUDIO</h1>
+            <button class="menu-button" onclick="showSection('design')">
+                <span class="icon">🎨</span> Дизайн
+            </button>
+            <button class="menu-button" onclick="showSection('programming')">
+                <span class="icon">💻</span> Програмування
+            </button>
+            <button class="menu-button" onclick="showSection('video')">
+                <span class="icon">🎬</span> Відеомонтаж
+            </button>
+            <button class="menu-button" onclick="showSection('editing')">
+                <span class="icon">📸</span> Редагування фото
+            </button>
+            <button class="menu-button" onclick="showSection('price')">
+                <span class="icon">💰</span> Прайс
+            </button>
         </div>
 
         <div id="designSection" class="hidden">
-            <textarea class="message-area" placeholder="Опишіть ваш проект..."></textarea>
-            <button class="menu-button" onclick="sendMessage('design')">Відправити</button>
-            <button class="menu-button back-button" onclick="showSection('main')">⬅️ Назад</button>
+            <h2 class="section-title">🎨 Дизайн</h2>
+            <textarea class="message-area" placeholder="Опишіть ваш проект..." maxlength="4096"></textarea>
+            <div id="designError" class="error-message"></div>
+            <button class="menu-button" onclick="sendMessage('design')">
+                <span class="icon">📤</span> Відправити
+            </button>
+            <button class="menu-button back-button" onclick="showSection('main')">
+                <span class="icon">⬅️</span> Назад
+            </button>
         </div>
 
         <div id="programmingSection" class="hidden">
-            <textarea class="message-area" placeholder="Опишіть ваш проект..."></textarea>
-            <button class="menu-button" onclick="sendMessage('programming')">Відправити</button>
-            <button class="menu-button back-button" onclick="showSection('main')">⬅️ Назад</button>
+            <h2 class="section-title">💻 Програмування</h2>
+            <textarea class="message-area" placeholder="Опишіть ваш проект..." maxlength="4096"></textarea>
+            <div id="programmingError" class="error-message"></div>
+            <button class="menu-button" onclick="sendMessage('programming')">
+                <span class="icon">📤</span> Відправити
+            </button>
+            <button class="menu-button back-button" onclick="showSection('main')">
+                <span class="icon">⬅️</span> Назад
+            </button>
+        </div>
+
+        <div id="videoSection" class="hidden">
+            <h2 class="section-title">🎬 Відеомонтаж</h2>
+            <textarea class="message-area" placeholder="Опишіть ваш проект..." maxlength="4096"></textarea>
+            <div id="videoError" class="error-message"></div>
+            <button class="menu-button" onclick="sendMessage('video')">
+                <span class="icon">📤</span> Відправити
+            </button>
+            <button class="menu-button back-button" onclick="showSection('main')">
+                <span class="icon">⬅️</span> Назад
+            </button>
+        </div>
+
+        <div id="editingSection" class="hidden">
+            <h2 class="section-title">📸 Редагування фото</h2>
+            <textarea class="message-area" placeholder="Опишіть ваш проект..." maxlength="4096"></textarea>
+            <div id="editingError" class="error-message"></div>
+            <button class="menu-button" onclick="sendMessage('editing')">
+                <span class="icon">📤</span> Відправити
+            </button>
+            <button class="menu-button back-button" onclick="showSection('main')">
+                <span class="icon">⬅️</span> Назад
+            </button>
         </div>
 
         <div id="priceSection" class="hidden">
+            <h2 class="section-title">💰 Прайс</h2>
             <div class="price-item">
-                <span>[ 🌟 ] Емодзі</span>
-                <span>0,72$</span>
+                <div>
+                    <span class="category-badge">🎨 Дизайн</span>
+                    <span>[ 🌟 ] Емодзі</span>
+                </div>
+                <span class="price">0,72$</span>
             </div>
             <div class="price-item">
-                <span>Міні пакунок (10 емодзі)</span>
-                <span>7,2$</span>
+                <div>
+                    <span class="category-badge">🎨 Дизайн</span>
+                    <span>Міні пакунок (10 емодзі)</span>
+                </div>
+                <span class="price">7,2$</span>
             </div>
             <div class="price-item">
-                <span>Повний пакунок (40 емодзі)</span>
-                <span>28$</span>
+                <div>
+                    <span class="category-badge">🎨 Дизайн</span>
+                    <span>Повний пакунок (40 емодзі)</span>
+                </div>
+                <span class="price">28$</span>
             </div>
-            <button class="menu-button back-button" onclick="showSection('main')">⬅️ Назад</button>
+            <div class="price-item">
+                <div>
+                    <span class="category-badge">🎬 Відео</span>
+                    <span>Базове редагування</span>
+                </div>
+                <span class="price">від 15$</span>
+            </div>
+            <div class="price-item">
+                <div>
+                    <span class="category-badge">🎬 Відео</span>
+                    <span>Повний монтаж</span>
+                </div>
+                <span class="price">від 30$</span>
+            </div>
+            <div class="price-item">
+                <div>
+                    <span class="category-badge">🎬 Відео</span>
+                    <span>Анімація та ефекти</span>
+                </div>
+                <span class="price">від 45$</span>
+            </div>
+            <div class="price-item">
+                <div>
+                    <span class="category-badge">📸 Фото</span>
+                    <span>Базова обробка</span>
+                </div>
+                <span class="price">від 5$</span>
+            </div>
+            <div class="price-item">
+                <div>
+                    <span class="category-badge">📸 Фото</span>
+                    <span>Ретуш</span>
+                </div>
+                <span class="price">від 10$</span>
+            </div>
+            <div class="price-item">
+                <div>
+                    <span class="category-badge">📸 Фото</span>
+                    <span>Складна обробка</span>
+                </div>
+                <span class="price">від 20$</span>
+            </div>
+            <div class="price-item">
+                <div>
+                    <span class="category-badge">💻 Розробка</span>
+                    <span>Telegram боти</span>
+                </div>
+                <span class="price">від 50$</span>
+            </div>
+            <div class="price-item">
+                <div>
+                    <span class="category-badge">💻 Розробка</span>
+                    <span>Веб-сайти</span>
+                </div>
+                <span class="price">від 200$</span>
+            </div>
+            <div class="price-item">
+                <div>
+                    <span class="category-badge">💻 Розробка</span>
+                    <span>Десктопні програми</span>
+                </div>
+                <span class="price">від 300$</span>
+            </div>
+            <button class="menu-button back-button" onclick="showSection('main')">
+                <span class="icon">⬅️</span> Назад
+            </button>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="adminPanel" class="admin-panel">
+            <h2 class="section-title">📋 Панель адміністратора</h2>
+            <div id="messagesList">
+                <!-- Messages will be added here dynamically -->
+                <div class="no-messages">Немає нових повідомлень</div>
+            </div>
         </div>
     </div>
 
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.ready();
+        let isAdmin = false;
+
+        // Initialize Telegram WebApp
+        try {
+            tg.expand();
+            tg.ready();
+            
+            // Check if user is admin
+            const initData = tg.initDataUnsafe;
+            console.log('User ID:', initData.user ? initData.user.id : 'No user ID');
+            isAdmin = initData.user && [5463205535].includes(initData.user.id);
+            console.log('Is Admin:', isAdmin);
+
+            if (isAdmin) {
+                document.getElementById('mainMenu').classList.add('hidden');
+                document.getElementById('adminPanel').classList.add('active');
+            } else {
+                document.getElementById('mainMenu').classList.remove('hidden');
+                document.getElementById('adminPanel').classList.remove('active');
+            }
+            
+            // Set theme params
+            if (tg.themeParams) {
+                document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color);
+                document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color);
+                document.documentElement.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color);
+                document.documentElement.style.setProperty('--tg-theme-link-color', tg.themeParams.link_color);
+                document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color);
+                document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color);
+            }
+
+            // Set main button color
+            if (tg.MainButton) {
+                tg.MainButton.setParams({
+                    text_color: '#ffffff'
+                });
+            }
+        } catch (e) {
+            console.error('Failed to initialize Telegram WebApp:', e);
+            console.error(e);
+        }
+
+        // Handle back button
+        if (tg.BackButton) {
+            tg.BackButton.onClick(() => {
+                showSection('main');
+            });
+        }
 
         function showSection(section) {
             // Hide all sections
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById('designSection').classList.add('hidden');
             document.getElementById('programmingSection').classList.add('hidden');
+            document.getElementById('videoSection').classList.add('hidden');
+            document.getElementById('editingSection').classList.add('hidden');
             document.getElementById('priceSection').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('active');
+
+            // Clear error messages
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.style.display = 'none';
+                el.textContent = '';
+            });
+
+            // Show/hide back button
+            if (tg.BackButton) {
+                if (section === 'main') {
+                    tg.BackButton.hide();
+                } else {
+                    tg.BackButton.show();
+                }
+            }
 
             // Show selected section
             if (section === 'main') {
-                document.getElementById('mainMenu').classList.remove('hidden');
-            } else if (section === 'design') {
-                document.getElementById('designSection').classList.remove('hidden');
-            } else if (section === 'programming') {
-                document.getElementById('programmingSection').classList.remove('hidden');
-            } else if (section === 'price') {
-                document.getElementById('priceSection').classList.remove('hidden');
+                if (isAdmin) {
+                    document.getElementById('adminPanel').classList.add('active');
+                } else {
+                    document.getElementById('mainMenu').classList.remove('hidden');
+                }
+            } else {
+                document.getElementById(`${section}Section`).classList.remove('hidden');
+            }
+        }
+
+        function showError(type, message) {
+            const errorElement = document.getElementById(`${type}Error`);
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
             }
         }
 
         function sendMessage(type) {
-            const section = type === 'design' ? 'designSection' : 'programmingSection';
-            const message = document.querySelector(`#${section} .message-area`).value;
+            try {
+                const section = `${type}Section`;
+                const textarea = document.querySelector(`#${section} .message-area`);
+                const message = textarea.value.trim();
+                
+                if (!message) {
+                    showError(type, 'Будь ласка, введіть повідомлення');
+                    return;
+                }
+
+                if (message.length > 4096) {
+                    showError(type, 'Повідомлення занадто довге');
+                    return;
+                }
+
+                // Send data back to the bot
+                tg.sendData(JSON.stringify({
+                    type: type,
+                    message: message
+                }));
+
+                // Clear textarea and show success message
+                textarea.value = '';
+                showSection('main');
+            } catch (e) {
+                console.error('Failed to send message:', e);
+                showError(type, 'Помилка при відправці повідомлення');
+            }
+        }
+
+        function showReplyForm(button) {
+            const card = button.closest('.message-card');
+            const form = card.querySelector('.reply-form');
+            form.classList.toggle('active');
+        }
+
+        function markAsCompleted(button) {
+            const card = button.closest('.message-card');
+            const messageId = card.dataset.messageId;
             
-            if (!message.trim()) {
-                tg.showAlert('Будь ласка, введіть повідомлення');
+            tg.sendData(JSON.stringify({
+                type: 'admin_action',
+                action: 'mark_completed',
+                messageId: messageId
+            }));
+
+            card.style.opacity = '0.5';
+        }
+
+        function sendReply(button) {
+            const card = button.closest('.message-card');
+            const textarea = card.querySelector('.reply-form textarea');
+            const messageId = card.dataset.messageId;
+            const reply = textarea.value.trim();
+
+            if (!reply) {
                 return;
             }
 
-            // Send data back to the bot
             tg.sendData(JSON.stringify({
-                type: type,
-                message: message
+                type: 'admin_action',
+                action: 'reply',
+                messageId: messageId,
+                reply: reply
             }));
 
-            document.querySelector(`#${section} .message-area`).value = '';
-            showSection('main');
+            textarea.value = '';
+            card.querySelector('.reply-form').classList.remove('active');
         }
+
+        // Handle hardware back button (Android)
+        window.addEventListener('popstate', function(e) {
+            showSection('main');
+            e.preventDefault();
+        });
     </script>
 </body>
 </html> 
