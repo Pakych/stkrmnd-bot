@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>STKRMND | STUDIO</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            color-scheme: light dark;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 16px;
+            background: var(--tg-theme-bg-color, #1E1E1E);
+            color: var(--tg-theme-text-color, #ffffff);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overscroll-behavior: none;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .menu-button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: var(--tg-theme-button-color, #2B2B2B);
+            border: none;
+            border-radius: 8px;
+            color: var(--tg-theme-button-text-color, #ffffff);
+            font-size: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-button:active {
+            opacity: 0.8;
+        }
+
+        .menu-button::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: var(--tg-theme-link-color, #8774e1);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .menu-button:active::after {
+            opacity: 0.1;
+        }
+
+        .back-button {
+            background: var(--tg-theme-secondary-bg-color, #363636);
+            margin-top: 16px;
+        }
+
+        .message-area {
+            width: 100%;
+            height: 150px;
+            padding: 12px;
+            margin: 8px 0;
+            background: var(--tg-theme-secondary-bg-color, #2B2B2B);
+            border: 1px solid var(--tg-theme-hint-color, #6d6d6d);
+            border-radius: 8px;
+            color: var(--tg-theme-text-color, #ffffff);
+            font-size: 16px;
+            resize: none;
+            transition: border-color 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .message-area:focus {
+            outline: none;
+            border-color: var(--tg-theme-link-color, #8774e1);
+        }
+
+        .price-item {
+            padding: 16px;
+            margin: 8px 0;
+            background: var(--tg-theme-secondary-bg-color, #2B2B2B);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 15px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .error-message {
+            color: #ff3b30;
+            font-size: 14px;
+            margin: 8px 0;
+            display: none;
+        }
+
+        @media (max-width: 360px) {
+            body {
+                padding: 12px;
+            }
+            
+            .menu-button {
+                padding: 10px;
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="mainMenu">
+            <button class="menu-button" onclick="showSection('design')">🎨 Дизайн</button>
+            <button class="menu-button" onclick="showSection('programming')">💻 Програмування</button>
+            <button class="menu-button" onclick="showSection('price')">💰 Прайс</button>
+        </div>
+
+        <div id="designSection" class="hidden">
+            <textarea class="message-area" placeholder="Опишіть ваш проект..." maxlength="4096"></textarea>
+            <div id="designError" class="error-message"></div>
+            <button class="menu-button" onclick="sendMessage('design')">Відправити</button>
+            <button class="menu-button back-button" onclick="showSection('main')">⬅️ Назад</button>
+        </div>
+
+        <div id="programmingSection" class="hidden">
+            <textarea class="message-area" placeholder="Опишіть ваш проект..." maxlength="4096"></textarea>
+            <div id="programmingError" class="error-message"></div>
+            <button class="menu-button" onclick="sendMessage('programming')">Відправити</button>
+            <button class="menu-button back-button" onclick="showSection('main')">⬅️ Назад</button>
+        </div>
+
+        <div id="priceSection" class="hidden">
+            <div class="price-item">
+                <span>[ 🌟 ] Емодзі</span>
+                <span>0,72$</span>
+            </div>
+            <div class="price-item">
+                <span>Міні пакунок (10 емодзі)</span>
+                <span>7,2$</span>
+            </div>
+            <div class="price-item">
+                <span>Повний пакунок (40 емодзі)</span>
+                <span>28$</span>
+            </div>
+            <button class="menu-button back-button" onclick="showSection('main')">⬅️ Назад</button>
+        </div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+
+        // Initialize Telegram WebApp
+        try {
+            tg.expand();
+            tg.ready();
+            
+            // Set theme params if available
+            if (tg.themeParams) {
+                document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color);
+                document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color);
+                document.documentElement.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color);
+                document.documentElement.style.setProperty('--tg-theme-link-color', tg.themeParams.link_color);
+                document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color);
+                document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color);
+            }
+
+            // Set main button color
+            if (tg.MainButton) {
+                tg.MainButton.setParams({
+                    text_color: '#ffffff'
+                });
+            }
+        } catch (e) {
+            console.error('Failed to initialize Telegram WebApp:', e);
+        }
+
+        // Handle back button
+        if (tg.BackButton) {
+            tg.BackButton.onClick(() => {
+                showSection('main');
+            });
+        }
+
+        function showSection(section) {
+            // Hide all sections
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('designSection').classList.add('hidden');
+            document.getElementById('programmingSection').classList.add('hidden');
+            document.getElementById('priceSection').classList.add('hidden');
+
+            // Clear error messages
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.style.display = 'none';
+                el.textContent = '';
+            });
+
+            // Show/hide back button
+            if (tg.BackButton) {
+                if (section === 'main') {
+                    tg.BackButton.hide();
+                } else {
+                    tg.BackButton.show();
+                }
+            }
+
+            // Show selected section
+            if (section === 'main') {
+                document.getElementById('mainMenu').classList.remove('hidden');
+            } else if (section === 'design') {
+                document.getElementById('designSection').classList.remove('hidden');
+            } else if (section === 'programming') {
+                document.getElementById('programmingSection').classList.remove('hidden');
+            } else if (section === 'price') {
+                document.getElementById('priceSection').classList.remove('hidden');
+            }
+        }
+
+        function showError(type, message) {
+            const errorElement = document.getElementById(`${type}Error`);
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+            }
+        }
+
+        function sendMessage(type) {
+            try {
+                const section = type === 'design' ? 'designSection' : 'programmingSection';
+                const textarea = document.querySelector(`#${section} .message-area`);
+                const message = textarea.value.trim();
+                
+                if (!message) {
+                    showError(type, 'Будь ласка, введіть повідомлення');
+                    return;
+                }
+
+                if (message.length > 4096) {
+                    showError(type, 'Повідомлення занадто довге');
+                    return;
+                }
+
+                // Send data back to the bot
+                const data = {
+                    type: type,
+                    message: message
+                };
+
+                tg.sendData(JSON.stringify(data));
+                textarea.value = '';
+                showSection('main');
+            } catch (e) {
+                console.error('Failed to send message:', e);
+                showError(type, 'Помилка при відправці повідомлення');
+            }
+        }
+
+        // Handle hardware back button (Android)
+        window.addEventListener('popstate', function(e) {
+            showSection('main');
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html> 
